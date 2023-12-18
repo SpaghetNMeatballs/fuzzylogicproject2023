@@ -1,18 +1,25 @@
-from random import uniform
+from random import uniform, randint
 from math import pi, sqrt, e
 import pyxel
 
 
-def calc_delta(y: float, omega: float = 0.4) -> int:
+def calc_delta(
+    y: float,
+    wind_fac: float = -1.5,
+    mpx: float = -0.2,
+    omega: float = 0.4,
+    offset: float = 1,
+) -> int:
     coeff = uniform(-1, 1)
-    mu = -0.03 * y + 1
-    temp_val = (1 / (omega * sqrt(2 * pi))) * e ** (-0.5 * ((coeff - mu) / omega) ** 2)
-    temp_val = 2 * temp_val - 1
+    mu = wind_fac * y + offset
+    temp_val = (1 / (omega * sqrt(2 * pi))) * e ** (mpx * ((coeff - mu) / omega) ** 2)
+    max_val = (1 / (omega * sqrt(2 * pi))) * e ** (mpx * ((mu - mu) / omega) ** 2)
+    temp_val = 2 * temp_val / max_val - 1
     return round(temp_val)
 
 
 class Automaton:
-    def __init__(self, start_x: int, field_x: int = 20, field_y: int = 20):
+    def __init__(self, start_x: list[int], field_x: int = 256, field_y: int = 256):
         self.field = [[0 for i in range(field_x)].copy() for i in range(field_y)]
         self.start_x = start_x
         self.field_x = field_x
@@ -22,20 +29,39 @@ class Automaton:
         new_field = [
             [0 for i in range(self.field_x)].copy() for i in range(self.field_y)
         ]
-        new_field[0][self.start_x] = 1
+        for i in self.start_x:
+            new_field[0][i] = 1
         for y in range(len(self.field)):
             for x in range(len(self.field[y])):
                 if self.field[y][x] == 1:
-                    x_delta = min(max(x + calc_delta(y), 0), self.field_x - 1)
-                    y_delta = min(self.field_y - 1, y + 1)
+                    x_delta = min(
+                        max(x + calc_delta(y / self.field_y), 0), self.field_x - 1
+                    )
+                    y_temp = self.field_y + calc_delta(
+                        y / self.field_y,
+                        wind_fac=1.2,
+                        omega=0.75,
+                        mpx=-0.1,
+                        offset=1.5,
+                    )
+                    y_delta = min(
+                        y_temp,
+                        y + 1,
+                    )
                     new_field[y_delta][x_delta] = 1
         self.field = new_field
 
 
 class App:
+    size = 512
+
     def __init__(self):
-        pyxel.init(26, 26)
-        self.automaton = Automaton(15)
+        pyxel.init(self.size + 4, self.size + 4)
+        self.automaton = Automaton(
+            start_x=[i for i in range(int(self.size * 0.9), int(self.size * 0.92))],
+            field_x=self.size,
+            field_y=self.size,
+        )
         pyxel.run(self.update, self.draw)
 
     def update(self):
@@ -43,13 +69,13 @@ class App:
 
     def draw(self):
         pyxel.cls(0)
-        pyxel.rect(0, 0, 26, 26, 1)
-        pyxel.rect(3, 3, 20, 20, 3)
+        pyxel.rect(0, 0, self.size + 4, self.size + 4, 1)
+        pyxel.rect(2, 2, self.size, self.size, 3)
         field = self.automaton.field
-        for y in range(len(field)):
-            for x in range(len(field[y])):
+        for y in range(self.automaton.field_y):
+            for x in range(self.automaton.field_x):
                 if field[y][x] == 1:
-                    pyxel.rect(x + 3, y + 3, 1, 1, 6)
+                    pyxel.rect(x + 2, y + 2, 1, 1, 10)
 
 
 def main():
