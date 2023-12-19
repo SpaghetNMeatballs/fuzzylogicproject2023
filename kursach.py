@@ -5,10 +5,10 @@ import pyxel
 
 def calc_delta(
     y: float,
-    wind_fac: float = -1.5,
+    wind_fac: float = -1,
     mpx: float = -0.2,
-    omega: float = 0.4,
-    offset: float = 1,
+    omega: float = 0.5,
+    offset: float = 1.5,
 ) -> int:
     coeff = uniform(-1, 1)
     mu = wind_fac * y + offset
@@ -19,6 +19,8 @@ def calc_delta(
 
 
 class Automaton:
+    wind = -5
+
     def __init__(self, start_x: list[int], field_x: int = 256, field_y: int = 256):
         self.field = [[0 for i in range(field_x)].copy() for i in range(field_y)]
         self.start_x = start_x
@@ -34,26 +36,40 @@ class Automaton:
         for y in range(len(self.field)):
             for x in range(len(self.field[y])):
                 if self.field[y][x] == 1:
-                    x_delta = min(
-                        max(x + calc_delta(y / self.field_y), 0), self.field_x - 1
-                    )
-                    y_temp = self.field_y + calc_delta(
-                        y / self.field_y,
-                        wind_fac=1.2,
-                        omega=0.75,
-                        mpx=-0.1,
-                        offset=1.5,
-                    )
-                    y_delta = min(
-                        y_temp,
-                        y + 1,
-                    )
+                    flag = 10
+                    while flag > 0:
+                        x_temp = x + calc_delta(
+                            y / self.field_y,
+                            wind_fac=self.wind,
+                            omega=1,
+                            mpx=-0.2,
+                            offset=-2.5,
+                        )
+                        x_delta = min(
+                            max(x_temp, 0),
+                            self.field_x - 1,
+                        )
+                        y_temp = y + calc_delta(
+                            y / self.field_y,
+                            wind_fac=1.2,
+                            omega=0.75,
+                            mpx=-0.2,
+                            offset=-1,
+                        )
+                        y_delta = min(
+                            max(y_temp, 0),
+                            self.field_y - 1,
+                        )
+                        if new_field[y_delta][x_delta] == 0:
+                            flag = 0
+                        else:
+                            flag -= 1
                     new_field[y_delta][x_delta] = 1
         self.field = new_field
 
 
 class App:
-    size = 512
+    size = 400
 
     def __init__(self):
         pyxel.init(self.size + 4, self.size + 4)
